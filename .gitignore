@@ -1,0 +1,11 @@
+ironclad-secrets
+*.env
+*.cred
+
+# 2. Runtime Data (Database & Logs)
+*.db
+*.log
+__pycache__/
+
+# 3. System Files
+.DS_Store
