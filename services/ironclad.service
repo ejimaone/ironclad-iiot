@@ -1,1 +1,26 @@
+[Unit]
+Description=IronClad IIoT Gateway Service
+After=network.target
+Wants=network.target
+StartLimitIntervalSec=40
+StartLimitBurst=5
+OnFailure=ironclad-recovery.service
 
+[Service]
+# notify the systemd waits for the code to send a notification that it is ready systemd.daemon.notify('READY=1')
+Type=notify
+
+ExecStart=telemetry.py
+
+#if the service does not recieve a notification within 60 seconds from telemetry.py daemon.notify('WATCHDOG=1'), it is considered failed and will be restarted
+WatchdogSec=60
+
+#Restart the service if it crashes 
+Restart=on-failure
+RestartSec=4
+
+#-10 ensures CPU gives priority to this service during any heavy load on the CPU
+Nice=-10
+
+[Install]
+WantedBy=multi-user.target

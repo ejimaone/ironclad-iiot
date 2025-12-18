@@ -1,0 +1,8 @@
+[Unit]
+Description=Recovery Logic for IronClad (Email Alert)
+
+[Service]
+Type=oneshot
+LoadCredentialEncrypted=gmail_pass:/etc/credstore.encrypted/gmail_pass.cred
+
+ExecStart=sos_alert.py
