@@ -1,8 +1,10 @@
 [Unit]
 Description=Recovery Logic for IronClad (Email Alert)
-
 [Service]
 Type=oneshot
-LoadCredentialEncrypted=gmail_pass:/etc/credstore.encrypted/gmail_pass.cred
+Environment=MYEMAIL="MYEMAIL@gmail.com"
 
-ExecStart=sos_alert.py
+LoadCredentialEncrypted=MYSECRET:/etc/credstore.encrypted/MYSECRET.cred
+
+#ExecStart=/usr/bin/python3 /opt/iiot_edge/sos_alert.py
+ExecStart=/bin/bash -c 'sleep 12; if [ "$(systemctl is-failed ironclad.service)" = "failed" ]; then echo "DEBUG: Final Failure Detected. Sending Email..."; /usr/bin/python3 /opt/iiot_edge/sos_alert.py; else echo "DEBUG: Service is recovering. No email needed."; fi'

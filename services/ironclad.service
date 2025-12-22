@@ -7,15 +7,14 @@ StartLimitBurst=5
 OnFailure=ironclad-recovery.service
 
 [Service]
-# notify the systemd waits for the code to send a notification that it is ready systemd.daemon.notify('READY=1')
+#This notify waits for my python script to load first and signal daemon.notify('READY=1') TO activate  
 Type=notify
 
-ExecStart=telemetry.py
+ExecStart=/usr/bin/python3 /opt/iiot_edge/telemetry.py
 
-#if the service does not recieve a notification within 60 seconds from telemetry.py daemon.notify('WATCHDOG=1'), it is considered failed and will be restarted
+#if the service does not recieve a notification within 60 seconds from telemetry.py daemon.notify('WATCHDOG=1'), it is considered a zombie  and will be restarted
 WatchdogSec=60
 
-#Restart the service if it crashes 
 Restart=on-failure
 RestartSec=4
 
