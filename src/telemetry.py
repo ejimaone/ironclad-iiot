@@ -48,7 +48,7 @@ def main():
             elif val > 100.0:
                 print(f" [WARNING] Pressure High {val:.2f} PSI")
             else:
-                #  Don't print everything to save space
+                #  
                 pass
             
             # Save to DB
