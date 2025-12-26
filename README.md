@@ -1,159 +1,145 @@
----
+**Project IronClad**
 
-# 🛡️ Project IronClad: Self-Healing IIoT Edge Gateway
-
-> **A Linux-native, fault-tolerant telemetry architecture designed for "Zero-Touch" remote environments (Oil & Gas / SCADA).**
-
-## 📖 Executive Summary
-
-In remote industrial environments (offshore rigs, pipelines), sending a technician to reboot a frozen gateway costs thousands of dollars ("truck rolls").
-
-**Project IronClad** is a proof-of-concept **Resiliency Architecture** that leverages the Linux Kernel and Systemd to guarantee uptime without human intervention. Unlike standard Python scripts, IronClad integrates directly with the OS Init System (PID 1) to survive application crashes, process freezes, and storage exhaustion.
-
-## 🏗️ Architecture
-
-The system is built on a **3-Tier Defense Strategy**:
-
-1. **Application Layer:** A Python Telemetry Agent using **SQLite** for atomic buffering and **Systemd Notification Sockets** (`sd_notify`) for heartbeat reporting.
-2. **Process Layer:** A **Systemd Service Supervisor** configured with strict **Watchdogs** (`WatchdogSec`) and **Circuit Breakers** (`StartLimitBurst`) to detect freezes and restart the service automatically.
-3. **Hardware Layer:** Kernel-level integration (`softdog`) to trigger a physical device reboot if the OS itself hangs.
-
-## ✨ Key Features (The "God Tier" Tech)
-
-### 1. 🔄 Unkillable Service Lifecycle (`Type=notify`)
-
-* Uses **Inter-Process Communication (IPC)** to handshake with Systemd.
-* The service is only marked "Active" after the database connection is verified (`READY=1`).
-* Dynamic status updates (`STATUS=Processing...`) visible in `systemctl status` without reading logs.
-
-### 2. ⏱️ Watchdog & Freeze Detection
-
-* **Software Watchdog:** If the main loop freezes (e.g., stuck network call) for >10 seconds, Systemd sends `SIGABRT` and restarts the service.
-* **Hardware Watchdog:** If Systemd fails, the Linux Kernel triggers a hardware reset.
-
-### 3. 💾 Storage Forensics & Isolation (LVM)
-
-* **Data Silo:** Telemetry data is isolated on a dedicated **Logical Volume (LVM)** (`/opt/iiot_edge`). If the database fills up, it cannot crash the Root OS.
-* **Structured Logging:** Replaces `print()` with **Systemd Journal Binary Logging**. Supports metadata filtering (`DEVICE_ID=pump01`) and Priority Levels (Alert vs Info).
-* **Forensic Persistence:** Logs are configured to survive reboots (`Storage=persistent`) with strict quotas (`SystemMaxUse=50M`) to prevent disk exhaustion.
-
-### 4. 🔐 Military-Grade Security
-
-* **No Hardcoded Secrets:** Credentials are managed via **Systemd LoadCredentialEncrypted**.
-* **Hardware Binding:** Secrets are encrypted on-disk and only decrypted into a secure RAM filesystem (`tmpfs`) by Systemd at runtime.
-* **Resource Prioritization:** Service runs with `Nice=-10` to guarantee CPU cycles during high-load system updates.
+A self-healing IIoT edge gateway for remote industrial environments.
 
 ---
 
-## 🚀 Installation & Deployment
+## The Problem
 
-### Prerequisites
+In Oil & Gas, a frozen gateway means a blind spot on a multimillion-dollar asset. Sending a technician to reboot a device on an offshore rig can cost thousands. IronClad eliminates that.
 
-- Linux VM (Ubuntu/Debian/RHEL) or Raspberry Pi.
-- Python 3 + `systemd-python` library.
+---
 
-### 1. Setup the Environment
+## Features
 
-```bash
-# Install dependencies
-sudo apt update && sudo apt install python3-systemd lvm2
+### Self-Healing Process Management
 
-# Clone the repo (Simulated)
-git clone https://github.com/YOUR_USERNAME/ironclad-iiot.git
-cd ironclad-iiot
+- Systemd `Type=notify` integration—service signals when ready
+- Watchdog heartbeat every 60 seconds—freeze detected, service restarted in 4 seconds
+- Circuit breaker after 5 failures triggers SMTP alert
+- Hardware watchdog reboots device if OS hangs
+
+### Data Persistence (Store & Forward)
+
+- SQLite-backed buffering—writes to disk immediately
+- Separate `/data` partition—database fills up, OS survives
+- Zero data loss on crash or power failure
+
+### Log Management
+
+- Systemd Journal with priority levels—debug filtered, critical alerts
+- 300MB cap with automatic rotation
+- Prevents "Disk Full" bricking
+
+### Encrypted Credentials
+
+- `LoadCredentialEncrypted`—secrets injected at runtime
+- Encrypted at rest, never in plain text
+- Aligns with ISA/IEC 62443
+
+### Resource Optimization
+
+- `Nice=-10` CPU priority for telemetry
+- Runs on low-cost edge hardware
+
+---
+
+## Architecture
 
 ```
+┌─────────────────────────────────────────────────────┐
+│                   HARDWARE LAYER                     │
+│              Kernel Watchdog (softdog)               │
+│         Physical reboot if OS hangs >20s             │
+└─────────────────────┬───────────────────────────────┘
+                      │
+┌─────────────────────▼───────────────────────────────┐
+│                   PROCESS LAYER                      │
+│                     Systemd                          │
+│  • WatchdogSec=60    • Restart=on-failure           │
+│  • StartLimitBurst=5 • OnFailure=recovery.service   │
+└─────────────────────┬───────────────────────────────┘
+                      │
+┌─────────────────────▼───────────────────────────────┐
+│                 APPLICATION LAYER                    │
+│                 Python Telemetry                     │
+│  • sd_notify(READY/WATCHDOG)  • SQLite persistence  │
+│  • journal.send() logging     • Encrypted creds     │
+└─────────────────────────────────────────────────────┘
+```
 
-### 2. Deploy to Linux Paths
+---
 
-We separate code (`/opt`) from config (`/etc`).
+## File Structure
+
+```
+/etc/systemd/system/
+├── ironclad.service          # Main telemetry service
+├── ironclad-recovery.service # SMTP alert on failure
+
+/opt/iiot_edge/
+├── telemetry.py              # Main application
+├── sos_alert.py              # Email alert script
+├── data.db                   # SQLite telemetry store
+
+/etc/credstore.encrypted/
+└── EMAIL_PASSWORD.cred       # Encrypted credentials
+```
+
+---
+
+## Quick Start
 
 ```bash
-# 1. Install the Agent
-sudo mkdir -p /opt/iiot_edge
-sudo cp src/*.py /opt/iiot_edge/
+# Clone repo
+git clone https://github.com/yourusername/ironclad.git
 
-# 2. Install the Service Units
-sudo cp config/*.service /etc/systemd/system/
+# Copy service files
+sudo cp systemd/*.service /etc/systemd/system/
 
-# 3. Reload Systemd
+# Create encrypted credential
+sudo systemd-creds encrypt --name=EMAIL_PASSWORD /dev/stdin /etc/credstore.encrypted/EMAIL_PASSWORD.cred
+
+# Enable and start
 sudo systemctl daemon-reload
-
-```
-
-### 3. Configure Security (Optional)
-
-If using `systemd-creds` (Systemd v250+):
-
-```bash
-# Encrypt your password
-sudo systemd-creds encrypt --name=gmail_pass - /etc/credstore.encrypted/gmail_pass.cred
-
-```
-
-### 4. Ignite
-
-```bash
 sudo systemctl enable --now ironclad.service
-
 ```
 
 ---
 
-## 🧪 Testing & Chaos Engineering
-
-This project includes "Self-Destruct" triggers to verify the recovery architecture.
-
-### Test 1: The Crash (Process Failure)
-
-Simulate a fatal code error.
+## Usage
 
 ```bash
-# Create the trigger file
-sudo touch /opt/iiot_edge/trigger_crash
+# Check status
+systemctl status ironclad.service
 
-# Watch it die and resurrect
-watch systemctl status ironclad
+# View logs
+journalctl -u ironclad.service -f
 
+# Query telemetry data
+sqlite3 /opt/iiot_edge/data.db "SELECT * FROM readings ORDER BY ts DESC LIMIT 10;"
+
+# Simulate crash (for testing)
+touch /opt/iiot_edge/trigger_crash
+
+# Simulate freeze (for testing)
+touch /opt/iiot_edge/trigger_freeze
 ```
-
-- **Expected Result:** Service fails, waits 2s (`RestartSec`), and restarts automatically.
-
-### Test 2: The Freeze (Watchdog Timeout)
-
-Simulate a hung process (infinite loop).
-
-```bash
-sudo touch /opt/iiot_edge/trigger_freeze
-
-```
-
-- **Expected Result:** Service stays "Active" for 10s, then Systemd kills it (Watchdog Timeout) and restarts it.
 
 ---
 
-## 🛠️ Project Structure
+## Tech Stack
 
-```text
-ironclad-iiot/
-├── config/
-│   ├── ironclad.service          # The Main Brain (Watchdogs, Nice Level)
-│   ├── ironclad-recovery.service # The Paramedic (Email Alerts)
-│   └── journald.conf             # Log Retention Policies
-├── src/
-│   ├── telemetry.py              # The Agent (SQLite + Notification Socket)
-│   └── sos_alert.py              # The Recovery Script
-├── RUNBOOK.md                    # Operational SOPs for Support Teams
-└── README.md                     # This file
-
-```
-
-## 🔮 Future Roadmap
-
-- [ ] **Azure IoT Hub:** Forwarding SQLite buffer to the Cloud.
-- [ ] **Terraform:** Automating the VM provisioning.
-- [ ] **Docker:** Containerizing the agent (Hybrid Architecture).
+- Python 3
+- Systemd (notify, watchdog, journal, credentials)
+- SQLite
+- LVM
+- SMTP
 
 ---
 
-_Built by [Your Name] as part of the "Top 1%" DevOps Architecture Portfolio._
+## What I Learned
+
+I'm in the Linux fundamentals phase of my journey toward Oil & Gas digital infrastructure. This project taught me that reliability isn't about code that doesn't crash—it's about systems that survive when it does.
+
+---
