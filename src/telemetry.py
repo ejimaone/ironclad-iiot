@@ -2,6 +2,7 @@ import time
 import sys
 import os
 import sqlite3
+import systemd.journal as journal
 import random
 from systemd import daemon
 
@@ -23,7 +24,7 @@ def init_db():
     return conn
 
 def main():
-    print(" [INFO] IronClad Agent Started.")
+    journal.send("IronClad Agent: Startup Initiated.", PRIORITY=journal.LOG_INFO)
     
     try:
         conn = init_db()
@@ -33,23 +34,24 @@ def main():
 
         while True:
             if os.path.exists(TRIGGER_CRASH):
-                print(" [ALERT] CHAOS: Crash Trigger Activated!")
+            
+                journal.send("CHAOS: Crash Trigger Activated! Exiting...", PRIORITY=journal.LOG_ALERT)
                 sys.exit(1)
 
             if os.path.exists(TRIGGER_FREEZE):
-                print(" [WARN] CHAOS: Freeze Trigger Activated!")
+                journal.send("CHAOS: Freeze Trigger Activated! Entering sleep loop...", PRIORITY=journal.LOG_WARNING)
                 while True: time.sleep(1) 
 
             
             val = random.uniform(50.0, 150.0)
             
             if val > 120.0:
-                print(f" [CRITICAL] Pressure Surge {val:.2f} PSI")
+               journal.send(f"CRITICAL: Pressure Surge {val:.2f} PSI", PRIORITY=journal.LOG_CRITICAL)
             elif val > 100.0:
-                print(f" [WARNING] Pressure High {val:.2f} PSI")
+               journal.send(f"WARNING: Pressure High {val:.2f} PSI", PRIORITY=journal.LOG_WARNING)
             else:
-                #  
-                pass
+                journal.send(f"Sensor read normal: {val:.2f} PSI", PRIORITY=journal.LOG_DEBUG) 
+                
             
             # Save to DB
             c.execute('INSERT INTO readings (val, ts) VALUES (?, datetime("now"))', (val,))
@@ -62,7 +64,7 @@ def main():
             time.sleep(5)
 
     except Exception as e:
-        print(f" [FATAL] Agent Crashed: {e}", file=sys.stderr)
+        journal.send(f"FATAL: Agent Crashed with error: {e}", PRIORITY=journal.LOG_ERR)
         sys.exit(1)
 
 if __name__ == '__main__':
