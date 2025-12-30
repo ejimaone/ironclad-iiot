@@ -6,7 +6,7 @@ A self-healing IIoT edge gateway for remote industrial environments.
 
 ## Architecture
 
-![IronClad Architecture](./ironclad-disk-architecture (1).png)
+![IronClad Architecture](./ironclad-disk-architecture(1).png)
 
 <!--
 TODO: Create Draw.io diagram showing:
