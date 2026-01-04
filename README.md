@@ -8,13 +8,6 @@ A self-healing IIoT edge gateway for remote industrial environments.
 
 ![IronClad Architecture](./ironclad-disk-architecture.png)
 
-<!--
-TODO: Create Draw.io diagram showing:
-Hardware Watchdog → Systemd Process Manager → Python Telemetry App
-With arrows showing: Heartbeat signals, Restart triggers, Alert flow to SMTP
-Export as PNG, also use for LinkedIn Featured section
--->
-
 ```
 ┌─────────────────────────────────────────────────────┐
 │                   HARDWARE LAYER                     │
