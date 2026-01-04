@@ -87,30 +87,6 @@ IronClad detects failures in seconds and recovers without human intervention—w
 
 ---
 
-## Architecture
-
-![IronClad Architecture](./ironclad-architecture.png)
-
-┌─────────────────────────────────────────────────────┐
-│ HARDWARE LAYER │
-│ Kernel Watchdog (softdog) │
-│ Physical reboot if OS hangs >20s │
-└─────────────────────┬───────────────────────────────┘
-│
-┌─────────────────────▼───────────────────────────────┐
-│ PROCESS LAYER │
-│ Systemd │
-│ • WatchdogSec=60 • Restart=on-failure │
-│ • StartLimitBurst=5 • OnFailure=recovery.service │
-└─────────────────────┬───────────────────────────────┘
-│
-┌─────────────────────▼───────────────────────────────┐
-│ APPLICATION LAYER │
-│ Python Telemetry │
-│ • sd_notify(READY/WATCHDOG) • SQLite persistence │
-│ • journal.send() logging • Encrypted creds │
-└─────────────────────────────────────────────────────┘
-
 ````
 
 ---
