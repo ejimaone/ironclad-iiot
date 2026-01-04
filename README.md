@@ -6,7 +6,7 @@ A self-healing IIoT edge gateway for remote industrial environments.
 
 ## Architecture
 
-![IronClad Architecture](./ironclad-disk-architecture(1).png)
+![IronClad Architecture](./ironclad-disk-architecture.png)
 
 <!--
 TODO: Create Draw.io diagram showing:
@@ -51,11 +51,11 @@ IronClad detects failures in seconds and recovers without human intervention—w
 
 ## Key Results
 
-| Metric | Value |
-|--------|-------|
-| Freeze detection | 60 seconds |
-| Service restart | ~4 seconds |
-| Alert trigger | After 5 failures |
+| Metric             | Value             |
+| ------------------ | ----------------- |
+| Freeze detection   | 60 seconds        |
+| Service restart    | ~4 seconds        |
+| Alert trigger      | After 5 failures  |
 | Data loss on crash | Zero (SQLite WAL) |
 
 ---
@@ -63,27 +63,32 @@ IronClad detects failures in seconds and recovers without human intervention—w
 ## Features
 
 ### Self-Healing Process Management
+
 - Systemd `Type=notify` integration—service signals when ready
 - Watchdog heartbeat every 60 seconds—freeze detected, service restarted
 - Circuit breaker after 5 failures triggers SMTP alert
 - Hardware watchdog reboots device if OS hangs
 
 ### Data Persistence (Store & Forward)
+
 - SQLite-backed buffering—writes to disk immediately
 - Separate `/data` partition—database fills up, OS survives
 - Zero data loss on crash or power failure
 
 ### Log Management
+
 - Systemd Journal with priority levels—debug filtered, critical alerts
 - 300MB cap with automatic rotation
 - Prevents "Disk Full" bricking
 
 ### Encrypted Credentials
+
 - `LoadCredentialEncrypted`—secrets injected at runtime
 - Encrypted at rest, never in plain text
 - Aligns with ISA/IEC 62443
 
 ### Resource Optimization
+
 - `Nice=-10` CPU priority for telemetry
 - Runs on low-cost edge hardware
 
